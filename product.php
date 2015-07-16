@@ -13,7 +13,6 @@ class ControllerProductProduct extends Controller {
 		);
 
 		$this->load->model('catalog/category');
-		$this->load->model('catalog/product');
 
 		if (isset($this->request->get['path'])) {
 			$path = '';
@@ -65,37 +64,6 @@ class ControllerProductProduct extends Controller {
 					'text' => $category_info['name'],
 					'href' => $this->url->link('product/category', 'path=' . $this->request->get['path'] . $url)
 				);
-			}
-		} else {
-			if(isset($this->request->get['product_id'])){
-				$getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
-				$category = array_shift($getCategories);
-				$category_info = $this->model_catalog_category->getCategory($category['category_id']);
-
-				if ($category_info) {
-					$url = '';
-
-					if (isset($this->request->get['sort'])) {
-						$url .= '&sort=' . $this->request->get['sort'];
-					}
-
-					if (isset($this->request->get['order'])) {
-						$url .= '&order=' . $this->request->get['order'];
-					}
-
-					if (isset($this->request->get['page'])) {
-						$url .= '&page=' . $this->request->get['page'];
-					}
-
-					if (isset($this->request->get['limit'])) {
-						$url .= '&limit=' . $this->request->get['limit'];
-					}
-
-					$data['breadcrumbs'][] = array(
-						'text' => $category_info['name'],
-						'href' => $this->url->link('product/category', 'path=' . $category['category_id'] . $url)
-					);
-				}
 			}
 		}
 
@@ -186,6 +154,9 @@ class ControllerProductProduct extends Controller {
 			$product_id = 0;
 		}
 
+		$this->load->model('catalog/category');
+		$this->load->model('catalog/product');
+
 		$product_info = $this->model_catalog_product->getProduct($product_id);
 
 		if ($product_info) {
@@ -193,6 +164,37 @@ class ControllerProductProduct extends Controller {
 
 			if (isset($this->request->get['path'])) {
 				$url .= '&path=' . $this->request->get['path'];
+			} else {
+				if(isset($this->request->get['product_id'])){
+					$getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
+					$category = array_shift($getCategories);
+					$category_info = $this->model_catalog_category->getCategory($category['category_id']);
+
+					if ($category_info) {
+						$url = '';
+
+						if (isset($this->request->get['sort'])) {
+							$url .= '&sort=' . $this->request->get['sort'];
+						}
+
+						if (isset($this->request->get['order'])) {
+							$url .= '&order=' . $this->request->get['order'];
+						}
+
+						if (isset($this->request->get['page'])) {
+							$url .= '&page=' . $this->request->get['page'];
+						}
+
+						if (isset($this->request->get['limit'])) {
+							$url .= '&limit=' . $this->request->get['limit'];
+						}
+
+						$data['breadcrumbs'][] = array(
+							'text' => $category_info['name'],
+							'href' => $this->url->link('product/category', 'path=' . $category['category_id'] . $url)
+						);
+					}
+				}
 			}
 
 			if (isset($this->request->get['filter'])) {
@@ -250,7 +252,7 @@ class ControllerProductProduct extends Controller {
 			$this->document->addLink($this->url->link('product/product', 'product_id=' . $this->request->get['product_id']), 'canonical');
 			$this->document->addScript('catalog/view/javascript/jquery/magnific/jquery.magnific-popup.min.js');
 			$this->document->addStyle('catalog/view/javascript/jquery/magnific/magnific-popup.css');
-			$this->document->addScript('catalog/view/javascript/jquery/datetimepicker/moment.min.js');
+			$this->document->addScript('catalog/view/javascript/jquery/datetimepicker/moment.js');
 			$this->document->addScript('catalog/view/javascript/jquery/datetimepicker/bootstrap-datetimepicker.min.js');
 			$this->document->addStyle('catalog/view/javascript/jquery/datetimepicker/bootstrap-datetimepicker.min.css');
 
@@ -279,7 +281,6 @@ class ControllerProductProduct extends Controller {
 			$data['entry_rating'] = $this->language->get('entry_rating');
 			$data['entry_good'] = $this->language->get('entry_good');
 			$data['entry_bad'] = $this->language->get('entry_bad');
-			$data['entry_captcha'] = $this->language->get('entry_captcha');
 
 			$data['button_cart'] = $this->language->get('button_cart');
 			$data['button_wishlist'] = $this->language->get('button_wishlist');
@@ -465,6 +466,7 @@ class ControllerProductProduct extends Controller {
 					'price'       => $price,
 					'special'     => $special,
 					'tax'         => $tax,
+					'minimum'     => $result['minimum'] > 0 ? $result['minimum'] : 1,
 					'rating'      => $rating,
 					'href'        => $this->url->link('product/product', 'product_id=' . $result['product_id'])
 				);
@@ -487,6 +489,14 @@ class ControllerProductProduct extends Controller {
 			$data['recurrings'] = $this->model_catalog_product->getProfiles($this->request->get['product_id']);
 
 			$this->model_catalog_product->updateViewed($this->request->get['product_id']);
+
+			if ($this->config->get('config_google_captcha_status')) {
+				$this->document->addScript('https://www.google.com/recaptcha/api.js');
+
+				$data['site_key'] = $this->config->get('config_google_captcha_public');
+			} else {
+				$data['site_key'] = '';
+			}
 
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['column_right'] = $this->load->controller('common/column_right');
@@ -628,6 +638,51 @@ class ControllerProductProduct extends Controller {
 		}
 	}
 
+	public function write() {
+		$this->load->language('product/product');
+
+		$json = array();
+
+		if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+			if ((utf8_strlen($this->request->post['name']) < 3) || (utf8_strlen($this->request->post['name']) > 25)) {
+				$json['error'] = $this->language->get('error_name');
+			}
+
+			if ((utf8_strlen($this->request->post['text']) < 25) || (utf8_strlen($this->request->post['text']) > 1000)) {
+				$json['error'] = $this->language->get('error_text');
+			}
+
+			if (empty($this->request->post['rating']) || $this->request->post['rating'] < 0 || $this->request->post['rating'] > 5) {
+				$json['error'] = $this->language->get('error_rating');
+			}
+
+			if ($this->config->get('config_google_captcha_status') && empty($json['error'])) {
+				if (isset($this->request->post['g-recaptcha-response'])) {
+					$recaptcha = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret=' . urlencode($this->config->get('config_google_captcha_secret')) . '&response=' . $this->request->post['g-recaptcha-response'] . '&remoteip=' . $this->request->server['REMOTE_ADDR']);
+
+					$recaptcha = json_decode($recaptcha, true);
+
+					if (!$recaptcha['success']) {
+						$json['error'] = $this->language->get('error_captcha');
+					}
+				} else {
+					$json['error'] = $this->language->get('error_captcha');
+				}
+			}
+
+			if (!isset($json['error'])) {
+				$this->load->model('catalog/review');
+
+				$this->model_catalog_review->addReview($this->request->get['product_id'], $this->request->post);
+
+				$json['success'] = $this->language->get('text_success');
+			}
+		}
+
+		$this->response->addHeader('Content-Type: application/json');
+		$this->response->setOutput(json_encode($json));
+	}
+
 	public function getRecurringDescription() {
 		$this->language->load('product/product');
 		$this->load->model('catalog/product');
@@ -677,47 +732,10 @@ class ControllerProductProduct extends Controller {
 				if ($recurring_info['duration']) {
 					$text = $trial_text . sprintf($this->language->get('text_payment_description'), $price, $recurring_info['cycle'], $frequencies[$recurring_info['frequency']], $recurring_info['duration']);
 				} else {
-					$text = $trial_text . sprintf($this->language->get('text_payment_until_canceled_description'), $price, $recurring_info['cycle'], $frequencies[$recurring_info['frequency']], $recurring_info['duration']);
+					$text = $trial_text . sprintf($this->language->get('text_payment_cancel'), $price, $recurring_info['cycle'], $frequencies[$recurring_info['frequency']], $recurring_info['duration']);
 				}
 
 				$json['success'] = $text;
-			}
-		}
-
-		$this->response->addHeader('Content-Type: application/json');
-		$this->response->setOutput(json_encode($json));
-	}
-
-	public function write() {
-		$this->load->language('product/product');
-
-		$json = array();
-
-		if ($this->request->server['REQUEST_METHOD'] == 'POST') {
-			if ((utf8_strlen($this->request->post['name']) < 3) || (utf8_strlen($this->request->post['name']) > 25)) {
-				$json['error'] = $this->language->get('error_name');
-			}
-
-			if ((utf8_strlen($this->request->post['text']) < 25) || (utf8_strlen($this->request->post['text']) > 1000)) {
-				$json['error'] = $this->language->get('error_text');
-			}
-
-			if (empty($this->request->post['rating']) || $this->request->post['rating'] < 0 || $this->request->post['rating'] > 5) {
-				$json['error'] = $this->language->get('error_rating');
-			}
-
-			if (empty($this->session->data['captcha']) || ($this->session->data['captcha'] != $this->request->post['captcha'])) {
-				$json['error'] = $this->language->get('error_captcha');
-			}
-
-			unset($this->session->data['captcha']);
-
-			if (!isset($json['error'])) {
-				$this->load->model('catalog/review');
-
-				$this->model_catalog_review->addReview($this->request->get['product_id'], $this->request->post);
-
-				$json['success'] = $this->language->get('text_success');
 			}
 		}
 
