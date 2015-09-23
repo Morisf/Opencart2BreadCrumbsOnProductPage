@@ -13,6 +13,14 @@ class ControllerProductProduct extends Controller {
 		);
 
 		$this->load->model('catalog/category');
+		$this->load->model('catalog/product');
+
+		if (isset($this->request->get['product_id'])) {
+			$product_id = (int)$this->request->get['product_id'];
+		} else {
+			$product_id = 0;
+		}
+		$product_info = $this->model_catalog_product->getProduct($product_id);
 
 		if (isset($this->request->get['path'])) {
 			$path = '';
@@ -64,6 +72,38 @@ class ControllerProductProduct extends Controller {
 					'text' => $category_info['name'],
 					'href' => $this->url->link('product/category', 'path=' . $this->request->get['path'] . $url)
 				);
+			}
+		} else {
+			$url = '';
+
+			if (isset($this->request->get['sort'])) {
+				$url .= '&sort=' . $this->request->get['sort'];
+			}
+
+			if (isset($this->request->get['order'])) {
+				$url .= '&order=' . $this->request->get['order'];
+			}
+
+			if (isset($this->request->get['page'])) {
+				$url .= '&page=' . $this->request->get['page'];
+			}
+
+			if (isset($this->request->get['limit'])) {
+				$url .= '&limit=' . $this->request->get['limit'];
+			}
+
+			$getCategories = $this->model_catalog_product->getCategories($product_info['product_id']);
+			arsort($getCategories);
+			$getCategories = array_shift($getCategories);
+			$category_id = $getCategories['category_id'];
+			$categoryPath = $this->model_catalog_category->getCategoryPath($getCategories['category_id']);
+			foreach($categoryPath as $path) {
+				$category_info = $this->model_catalog_category->getCategory($path['path_id']);
+				$data['breadcrumbs'][] = array(
+						'text' => $category_info['name'],
+						'href' => $this->url->link('product/category', 'path=' . $category_info['category_id'] . $url)
+				);
+				unset($category_info);
 			}
 		}
 
@@ -148,53 +188,13 @@ class ControllerProductProduct extends Controller {
 			);
 		}
 
-		if (isset($this->request->get['product_id'])) {
-			$product_id = (int)$this->request->get['product_id'];
-		} else {
-			$product_id = 0;
-		}
 
-		$this->load->model('catalog/category');
-		$this->load->model('catalog/product');
-
-		$product_info = $this->model_catalog_product->getProduct($product_id);
 
 		if ($product_info) {
 			$url = '';
 
 			if (isset($this->request->get['path'])) {
 				$url .= '&path=' . $this->request->get['path'];
-			} else {
-				if(isset($this->request->get['product_id'])){
-					$getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
-					$category = array_shift($getCategories);
-					$category_info = $this->model_catalog_category->getCategory($category['category_id']);
-
-					if ($category_info) {
-						$url = '';
-
-						if (isset($this->request->get['sort'])) {
-							$url .= '&sort=' . $this->request->get['sort'];
-						}
-
-						if (isset($this->request->get['order'])) {
-							$url .= '&order=' . $this->request->get['order'];
-						}
-
-						if (isset($this->request->get['page'])) {
-							$url .= '&page=' . $this->request->get['page'];
-						}
-
-						if (isset($this->request->get['limit'])) {
-							$url .= '&limit=' . $this->request->get['limit'];
-						}
-
-						$data['breadcrumbs'][] = array(
-							'text' => $category_info['name'],
-							'href' => $this->url->link('product/category', 'path=' . $category['category_id'] . $url)
-						);
-					}
-				}
 			}
 
 			if (isset($this->request->get['filter'])) {
@@ -742,4 +742,22 @@ class ControllerProductProduct extends Controller {
 		$this->response->addHeader('Content-Type: application/json');
 		$this->response->setOutput(json_encode($json));
 	}
+
+	function buildTree(array $elements, $parentId = 0) {
+
+		$branch = array();
+
+		foreach ($elements as $element) {
+			if ($element['parent_id'] == $parentId) {
+				$children = $this->buildTree($elements, $element['category_id']);
+				if ($children) {
+					$element['children'] = $children;
+				}
+				$branch[] = $element;
+			}
+		}
+
+		return $branch;
+	}
+
 }
