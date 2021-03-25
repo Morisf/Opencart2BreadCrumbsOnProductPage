@@ -4,29 +4,29 @@ Fast add Category in breadcrumbs on Product page
 * Open catalog/controller/product/product.php
 
 Search : 
-`
+```
 $this->load->model('catalog/product');
-`
+```
 
 cut it and place after 
 
-`
+```
 $this->load->model('catalog/category');
 $this->load->model('catalog/product');
-`
+```
 
 Found this :
 
-`
+```
 if (isset($this->request->get['path'])) {
 ...
 ...
 }
-`
+```
 
 after closing brace add
 
-`
+```
 } else {
 			if(isset($this->request->get['product_id'])){
 				$getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
@@ -60,7 +60,7 @@ after closing brace add
 			}
 		}
 
-`
+```
 
 Best regards [Moris Finkel](mailto:moris@moris-web.com)
 
