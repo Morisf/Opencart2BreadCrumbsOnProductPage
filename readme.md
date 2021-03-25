@@ -22,7 +22,9 @@ if (isset($this->request->get['path'])) {
 ...
 }
 ``````````````````
+
 after closing brace add
+
 ````
 } else {
 			if(isset($this->request->get['product_id'])){
@@ -58,6 +60,7 @@ after closing brace add
 		}
 
 `````
+
 Best regards [Moris Finkel](mailto:moris@moris-web.com)
 
 [Moris-Web](http://moris-web.com)
