@@ -65,5 +65,5 @@ after closing brace add
 
 Best regards [Moris Finkel](mailto:moris@moris-web.com)
 
-[Moris-Web](http://moris-web.com)
+[Moris-Web](https://moris.org.ua)
 
