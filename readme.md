@@ -28,37 +28,38 @@ after closing brace add
 
 ```
 } else {
-			if(isset($this->request->get['product_id'])){
-				$getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
-				$category = array_shift($getCategories);
-				$category_info = $this->model_catalog_category->getCategory($category['category_id']);
+    if(isset($this->request->get['product_id'])) {
 
-				if ($category_info) {
-					$url = '';
+        $getCategories = $this->model_catalog_product->getCategories($this->request->get['product_id']);
+        $category = array_shift($getCategories);
+        $category_info = $this->model_catalog_category->getCategory($category['category_id']);
 
-					if (isset($this->request->get['sort'])) {
-						$url .= '&sort=' . $this->request->get['sort'];
-					}
+        if ($category_info) {
+            $url = '';
 
-					if (isset($this->request->get['order'])) {
-						$url .= '&order=' . $this->request->get['order'];
-					}
+            if (isset($this->request->get['sort'])) {
+                $url .= '&sort=' . $this->request->get['sort'];
+            }
 
-					if (isset($this->request->get['page'])) {
-						$url .= '&page=' . $this->request->get['page'];
-					}
+            if (isset($this->request->get['order'])) {
+                $url .= '&order=' . $this->request->get['order'];
+            }
 
-					if (isset($this->request->get['limit'])) {
-						$url .= '&limit=' . $this->request->get['limit'];
-					}
+            if (isset($this->request->get['page'])) {
+                $url .= '&page=' . $this->request->get['page'];
+            }
 
-					$data['breadcrumbs'][] = array(
-						'text' => $category_info['name'],
-						'href' => $this->url->link('product/category', 'path=' . $category['category_id'] . $url)
-					);
-				}
-			}
-		}
+            if (isset($this->request->get['limit'])) {
+                $url .= '&limit=' . $this->request->get['limit'];
+            }
+
+            $data['breadcrumbs'][] = array(
+                'text' => $category_info['name'],
+                'href' => $this->url->link('product/category', 'path=' . $category['category_id'] . $url)
+            );
+        }
+    }
+}
 
 ```
 
